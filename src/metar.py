@@ -34,3 +34,26 @@ def fenomeno_visibilidad(metar):
     if wx:
         partes.append(f"fenómeno: {wx}")
     return ", ".join(partes) or None
+
+
+def historial_metar(icao, horas=48):
+    """Observaciones de las últimas horas como DataFrame (hora local Argentina).
+    Columnas: time, temp, viento_kmh, rafaga_kmh, visib_sm."""
+    import pandas as pd
+    try:
+        r = requests.get(URL, params={"ids": icao, "format": "json", "hours": horas}, timeout=20)
+        r.raise_for_status()
+        filas = []
+        for m in r.json():
+            if m.get("obsTime") is None:
+                continue
+            t = pd.to_datetime(m["obsTime"], unit="s", utc=True)
+            t = t.tz_convert("America/Argentina/Buenos_Aires").tz_localize(None)
+            wspd, wgst = m.get("wspd"), m.get("wgst")
+            filas.append({"time": t, "temp": m.get("temp"),
+                          "viento_kmh": wspd * 1.852 if wspd is not None else None,
+                          "rafaga_kmh": wgst * 1.852 if wgst is not None else None,
+                          "visib_sm": m.get("visib")})
+        return pd.DataFrame(filas).sort_values("time") if filas else pd.DataFrame()
+    except Exception:
+        return pd.DataFrame()
