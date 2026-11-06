@@ -12,6 +12,7 @@ import xml.etree.ElementTree as ET
 from concurrent.futures import ThreadPoolExecutor
 
 FEED = "https://ssl.smn.gob.ar/CAP/AR.php"
+HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; meteo-norte-arg/1.0)"}
 
 def _limpiar(tag):
     return tag.split("}")[-1]
@@ -61,7 +62,7 @@ def _parsear_cap(xml_texto):
 
 def _bajar_cap(url):
     try:
-        rc = requests.get(url, timeout=10)
+        rc = requests.get(url, headers=HEADERS, timeout=10)
         if rc.ok and "<info" in rc.text:
             return _parsear_cap(rc.text)
     except Exception:
@@ -71,7 +72,7 @@ def _bajar_cap(url):
 def descargar_alertas(max_enlaces=40):
     """Devuelve la lista de alertas vigentes (o [] si no se pudo leer)."""
     try:
-        r = requests.get(FEED, timeout=15)
+        r = requests.get(FEED, headers=HEADERS, timeout=15)
         r.raise_for_status()
         raiz = ET.fromstring(r.content)
         # El feed puede ser un CAP directo o un índice (RSS/Atom) con links a CAPs
