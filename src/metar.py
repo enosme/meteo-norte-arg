@@ -22,15 +22,28 @@ def base_nubes_observada_ft(metar):
     techos = [c["base"] for c in capas if c.get("cover") in ("BKN", "OVC")]
     return min(techos) if techos else min(c["base"] for c in capas)
 
+def visibilidad_km(valor):
+    """Convierte la visibilidad del METAR (millas terrestres, ej. 3, 0.5, '6+') a km.
+    Devuelve (km, tope). tope=True significa 'más de' (el METAR no informa más allá de ~10 km)."""
+    if valor is None:
+        return None, False
+    s = str(valor).strip()
+    tope = s.endswith("+")
+    try:
+        return float(s.rstrip("+")) * 1.609, tope
+    except ValueError:
+        return None, False
+
+
 def fenomeno_visibilidad(metar):
-    """Texto con visibilidad y fenómenos (FG = niebla, BR = neblina, FU = humo)."""
+    """Texto con visibilidad (km) y fenómenos (FG = niebla, BR = neblina, HZ = bruma, FU = humo)."""
     if not metar:
         return None
     wx = metar.get("wxString") or ""
-    vis = metar.get("visib")
+    km, tope = visibilidad_km(metar.get("visib"))
     partes = []
-    if vis is not None:
-        partes.append(f"visibilidad {vis} SM")
+    if km is not None:
+        partes.append(f"visibilidad {'más de ' if tope else ''}{km:.1f} km")
     if wx:
         partes.append(f"fenómeno: {wx}")
     return ", ".join(partes) or None
@@ -38,7 +51,7 @@ def fenomeno_visibilidad(metar):
 
 def historial_metar(icao, horas=48):
     """Observaciones de las últimas horas como DataFrame (hora local Argentina).
-    Columnas: time, temp, viento_kmh, rafaga_kmh, visib_sm."""
+    Columnas: time, temp, viento_kmh, rafaga_kmh, visib_km."""
     import pandas as pd
     try:
         r = requests.get(URL, params={"ids": icao, "format": "json", "hours": horas}, timeout=20)
@@ -50,10 +63,11 @@ def historial_metar(icao, horas=48):
             t = pd.to_datetime(m["obsTime"], unit="s", utc=True)
             t = t.tz_convert("America/Argentina/Buenos_Aires").tz_localize(None)
             wspd, wgst = m.get("wspd"), m.get("wgst")
+            vkm, _ = visibilidad_km(m.get("visib"))
             filas.append({"time": t, "temp": m.get("temp"),
                           "viento_kmh": wspd * 1.852 if wspd is not None else None,
                           "rafaga_kmh": wgst * 1.852 if wgst is not None else None,
-                          "visib_sm": m.get("visib")})
+                          "visib_km": vkm})
         return pd.DataFrame(filas).sort_values("time") if filas else pd.DataFrame()
     except Exception:
         return pd.DataFrame()
