@@ -9,6 +9,7 @@ https://www.smn.gob.ar/alertas ; si el feed CAP los incluye, aparecen acá.
 """
 import requests
 import xml.etree.ElementTree as ET
+from concurrent.futures import ThreadPoolExecutor
 
 FEED = "https://ssl.smn.gob.ar/CAP/AR.php"
 
@@ -58,29 +59,34 @@ def _parsear_cap(xml_texto):
         })
     return alertas
 
-def descargar_alertas():
+def _bajar_cap(url):
+    try:
+        rc = requests.get(url, timeout=10)
+        if rc.ok and "<info" in rc.text:
+            return _parsear_cap(rc.text)
+    except Exception:
+        pass
+    return []
+
+def descargar_alertas(max_enlaces=40):
     """Devuelve la lista de alertas vigentes (o [] si no se pudo leer)."""
     try:
-        r = requests.get(FEED, timeout=30)
+        r = requests.get(FEED, timeout=15)
         r.raise_for_status()
         raiz = ET.fromstring(r.content)
         # El feed puede ser un CAP directo o un índice (RSS/Atom) con links a CAPs
         if _hijos(raiz, "info"):
             return _parsear_cap(r.text)
-        alertas = []
-        enlaces = set()
+        enlaces = []
         for e in raiz.iter():
             if _limpiar(e.tag) == "link":
                 url = e.attrib.get("href") or (e.text or "").strip()
-                if url.startswith("http"):
-                    enlaces.add(url)
-        for url in enlaces:
-            try:
-                rc = requests.get(url, timeout=30)
-                if rc.ok and "<info" in rc.text:
-                    alertas += _parsear_cap(rc.text)
-            except Exception:
-                continue
+                if url.startswith("http") and url not in enlaces:
+                    enlaces.append(url)
+        alertas = []
+        with ThreadPoolExecutor(max_workers=8) as ex:
+            for res in ex.map(_bajar_cap, enlaces[:max_enlaces]):
+                alertas += res
         return alertas
     except Exception as e:
         print(f"[aviso] No se pudo leer el feed de alertas del SMN: {e}")
