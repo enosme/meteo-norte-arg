@@ -152,6 +152,20 @@ with tab_res:
                     + (f" · base de nubes observada: {obs} ft ({obs*0.3048:.0f} m)"
                        if obs else " · sin nubes bajas reportadas"))
 
+    if ciudad["icao"]:
+        with st.expander("Ver METAR original y cómo se interpretó"):
+            ob_raw = historial(ciudad["icao"])
+            if ob_raw.empty or "raw" not in ob_raw:
+                st.write("Sin observaciones disponibles.")
+            else:
+                t = ob_raw.tail(8)[["time", "raw", "visib_km"]].iloc[::-1].copy()
+                t.columns = ["Hora local", "METAR original", "Visibilidad interpretada (km)"]
+                t["Visibilidad interpretada (km)"] = t["Visibilidad interpretada (km)"].round(1)
+                st.dataframe(t, hide_index=True)
+                st.caption("En el METAR, la visibilidad es el grupo de 4 dígitos que sigue al viento "
+                           "(9999 = 10 km o más; 4000 = 4 km; 0800 = 800 m). CAVOK = visibilidad "
+                           "de 10 km o más sin nubes bajas ni fenómenos.")
+
     # Lluvia + probabilidad
     f = make_subplots(specs=[[{"secondary_y": True}]])
     f.add_bar(x=df["time"], y=df["precipitation"], name="Lluvia (mm/h)", marker_color="#1f77b4")
