@@ -21,8 +21,18 @@ def datos_ciudad(lat, lon):
 
 
 @st.cache_data(ttl=600)
+def _alertas_cache():
+    res = descargar_alertas()
+    if not res:
+        raise RuntimeError("sin alertas leídas")   # así no se guarda un resultado vacío
+    return res
+
+
 def alertas_smn():
-    return descargar_alertas()
+    try:
+        return _alertas_cache()
+    except Exception:
+        return []
 
 
 @st.cache_data(ttl=600)
