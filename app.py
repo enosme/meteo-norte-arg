@@ -181,8 +181,18 @@ with tab_res:
                         use_container_width=True)
 
         f = go.Figure()
-        f.add_scatter(x=df["time"], y=df["visibility"] / 1000, name="Visibilidad")
+        f.add_scatter(x=df["time"], y=(df["visibility"] / 1000).clip(upper=10),
+                      name="Modelo (limitado a 10 km)")
+        if ciudad["icao"]:
+            ob = historial(ciudad["icao"])
+            if not ob.empty and "visib_km" in ob:
+                f.add_scatter(x=ob["time"], y=ob["visib_km"].clip(upper=10),
+                              mode="markers+lines", name="Observado (METAR)",
+                              line=dict(color="black", width=2))
         st.plotly_chart(estilo(f, "Visibilidad (km)", "km"), use_container_width=True)
+        st.caption("El METAR informa como máximo ~10 km, por eso el modelo se limita a 10 km para "
+                   "poder compararlos. Los modelos no detectan bien las nieblas locales: ante "
+                   "diferencias, guiate por el METAR (observación real).")
 
     st.subheader("Distancia a las otras localidades")
     tabla = []
