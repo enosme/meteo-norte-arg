@@ -49,11 +49,17 @@ for c in CIUDADES:
                   "Distancia a la ciudad elegida (km)":
                       round(distancia_km(ciudad["lat"], ciudad["lon"], c["lat"], c["lon"]))})
 dfm = pd.DataFrame(filas)
-fig_mapa = px.scatter_mapbox(
+# Compatible con versiones nuevas (scatter_map) y viejas (scatter_mapbox) de Plotly
+usa_nuevo = hasattr(px, "scatter_map")
+funcion_mapa = px.scatter_map if usa_nuevo else px.scatter_mapbox
+fig_mapa = funcion_mapa(
     dfm, lat="lat", lon="lon", hover_name="Ciudad", color="Estado",
     color_discrete_map={"Sin alertas": "green"},
     hover_data={"lat": False, "lon": False}, zoom=5, height=450)
-fig_mapa.update_layout(mapbox_style="open-street-map", margin=dict(l=0, r=0, t=0, b=0))
+if usa_nuevo:
+    fig_mapa.update_layout(map_style="open-street-map", margin=dict(l=0, r=0, t=0, b=0))
+else:
+    fig_mapa.update_layout(mapbox_style="open-street-map", margin=dict(l=0, r=0, t=0, b=0))
 fig_mapa.update_traces(marker=dict(size=14))
 st.plotly_chart(fig_mapa, use_container_width=True)
 
