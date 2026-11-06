@@ -1,5 +1,6 @@
 """Uso:  python main.py
 Genera informes/AAAA-MM-DD.md con el informe de todas las ciudades."""
+import time
 from datetime import datetime
 from pathlib import Path
 from src.ciudades import CIUDADES
@@ -16,6 +17,7 @@ def main():
               "Son estimaciones; ante riesgo, seguí siempre los avisos oficiales del SMN "
               "(smn.gob.ar/alertas).\n"]
     for c in CIUDADES:
+        time.sleep(1)
         try:
             partes.append(informe_ciudad(c, alertas))
         except Exception as e:
