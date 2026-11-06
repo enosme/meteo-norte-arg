@@ -37,7 +37,9 @@ st.caption("Datos: Open-Meteo, METAR y alertas CAP del SMN. Son estimaciones: "
 nombres = [c["nombre"] for c in CIUDADES]
 elegida = st.sidebar.selectbox("Ciudad", nombres)
 ciudad = next(c for c in CIUDADES if c["nombre"] == elegida)
-alertas = alertas_smn()
+with st.spinner("Leyendo alertas del SMN..."):
+    alertas = alertas_smn()
+st.sidebar.caption(f"Alertas leídas del SMN: {len(alertas)}")
 
 # ---------- Mapa general ----------
 st.subheader("Mapa de localidades")
@@ -65,7 +67,12 @@ st.plotly_chart(fig_mapa, use_container_width=True)
 
 # ---------- Ciudad elegida ----------
 st.header(f"{ciudad['nombre']} ({ciudad['provincia']})")
-df = datos_ciudad(ciudad["lat"], ciudad["lon"])
+try:
+    with st.spinner("Descargando pronóstico..."):
+        df = datos_ciudad(ciudad["lat"], ciudad["lon"])
+except Exception as e:
+    st.error(f"No se pudo descargar el pronóstico de Open-Meteo: {e}")
+    st.stop()
 hoy = df["time"].dt.date.min()
 d = df[df["time"].dt.date == hoy]
 
